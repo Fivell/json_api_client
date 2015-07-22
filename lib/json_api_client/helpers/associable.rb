@@ -4,7 +4,7 @@ module JsonApiClient
       extend ActiveSupport::Concern
 
       included do
-        class_attribute :associations
+        class_attribute :associations, instance_accessor: false
         self.associations = []
 
         include Associations::BelongsTo
@@ -30,12 +30,8 @@ module JsonApiClient
         def path(params = nil)
           parts = [table_name]
           if params
-            filters = params.fetch(:filter, params)
-            slurp = filters.slice(*prefix_params)
-            prefix_params.each do |param|
-              filters.delete(param)
-            end
-            parts.unshift(prefix_path % slurp.symbolize_keys)
+            path_params = params.delete(:path) || params
+            parts.unshift(prefix_path % path_params.symbolize_keys)
           else
             parts.unshift(prefix_path)
           end
@@ -49,7 +45,7 @@ module JsonApiClient
       protected
 
       def load_associations(params)
-        associations.each do |association|
+        self.class.associations.each do |association|
           if params.has_key?(association.attr_name.to_s)
             set_attribute(association.attr_name, association.parse(params[association.attr_name.to_s]))
           end
